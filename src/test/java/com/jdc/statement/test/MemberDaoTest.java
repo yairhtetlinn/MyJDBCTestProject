@@ -6,7 +6,10 @@ import java.time.LocalDate;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 
 import com.jdc.statement.ConnectionManager;
 import com.jdc.statement.DatabaseInitializer;
@@ -15,6 +18,7 @@ import com.jdc.statement.dao.MemberDao;
 import com.jdc.statement.dto.Member;
 import com.jdc.statement.dto.Member.Role;
 
+@TestMethodOrder(OrderAnnotation.class)
 class MemberDaoTest {
 	
 	MemberDao dao;
@@ -33,6 +37,7 @@ class MemberDaoTest {
 		dao = new MemberDao(ConnectionManager.getInstance());
 	}
 
+	@Order(1)
 	@Test
 	void testCreateMemberOk() {
 		var result = dao.createMember(input);
@@ -40,6 +45,7 @@ class MemberDaoTest {
 	}
 	
 	@Test
+	@Order(2)
 	void testCreateMemberNull() {
 		dao.createMember(null);
 		assertThrows(IllegalArgumentException.class,
@@ -47,6 +53,7 @@ class MemberDaoTest {
 	}
 	
 	@Test
+	@Order(3)
 	void testMemberDuplicateKey() {
 		var exception = assertThrows(MessageDaoException.class,
 				()-> dao.createMember(input) );
@@ -54,6 +61,7 @@ class MemberDaoTest {
 	}
 	
 	@Test
+	@Order(4)
 	void testCreateMemberNullName() {
 		var NullData = new Member("testone@gmail.com", null, "Testone", LocalDate.of(2001, 9, 26), Role.Admin);
 		var exception = assertThrows(MessageDaoException.class, ()->dao.createMember(NullData));
@@ -65,6 +73,7 @@ class MemberDaoTest {
 	}
 	
 	@Test
+	@Order(5)
 	void testCreateMemberNullEmail() {
 		var NullData = new Member(null, "Yair Htet Linn", "Testone", LocalDate.of(2001, 9, 26), Role.Admin);
 		var exception = assertThrows(MessageDaoException.class, ()->dao.createMember(NullData));
@@ -76,6 +85,7 @@ class MemberDaoTest {
 	}
 	
 	@Test
+	@Order(6)
 	void testCreateMemberNullDob() {
 		var NullData = new Member("testone@gmail.com", "Yair Htet Linn", "Testone", null , Role.Admin);
 		var exception = assertThrows(MessageDaoException.class, ()->dao.createMember(NullData));
@@ -83,6 +93,7 @@ class MemberDaoTest {
 	}
 	
 	@Test
+	@Order(7)
 	void testCreateMemberNullPassword() {
 		var NullData = new Member("testone@gmail.com", "Yari Htet Linn", null, LocalDate.of(2001, 9, 26), Role.Admin);
 		var exception = assertThrows(MessageDaoException.class, ()->dao.createMember(NullData));
@@ -94,23 +105,27 @@ class MemberDaoTest {
 	}
 
 	@Test
+	@Order(8)
 	void testFindByEmail() {
 		var result = dao.findByEmail(input.email());
 		assertEquals(input, result);
 	}
 	
 	@Test
+	@Order(9)
 	void testFindByEmailNotFound() {
 		var result = dao.findByEmail("%s1".formatted(input.email()));
 		assertNull(result);
 	}
 	
 	@Test
+	@Order(10)
 	void testFindByEmailNull() {
 		assertThrows(IllegalArgumentException.class, ()-> dao.findByEmail(null));
 	}
 
 	@Test
+	@Order(11)
 	void testChangePassword() {
 		var NewPass = "NewPassword";
 		var result = dao.changePassword(input.email(), input.password(), NewPass);
@@ -124,34 +139,52 @@ class MemberDaoTest {
 	}
 	
 	@Test
+	@Order(12)
 	void testChangePasswordNotFound() {
-		fail("Not yet implemented");
+		var exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword("%s".formatted(input.email()), input.password(), "NewPassword"));
+		assertEquals("Please Check Email", exception.getMessage());
 	}
 	
 	
 	@Test
+	@Order(13)
 	void testChangePasswordNullEmail() {
-		fail("Not yet implemented");
+		var exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword(null, "NewPassword", "NewPass"));
+		assertEquals("Email Must Not Be NULL", exception.getMessage());
+		exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword("","NewPassword", "NewPass"));
+		assertEquals("Email Must Not Be EMPTY", exception.getMessage());
 	}
 	
 	@Test
+	@Order(14)
 	void testChangePasswordNullOldPass() {
-		fail("Not yet implemented");
+		var exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword(input.email(), null, "NewPassword"));
+		assertEquals("Old Password Must Not Be NULL", exception.getMessage());
+		exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword(input.email(), "", "NewPassword"));
+		assertEquals("Old Password Must Not Be EMPTY", exception.getMessage());
 	}
 	
 	@Test
+	@Order(15)
 	void testChangePasswordNullNewPass() {
-		fail("Not yet implemented");
+		var exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword(input.email(), "NewPassword", null));
+		assertEquals("New Password Must Not Be NULL", exception.getMessage());
+		exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword(input.email(), "NewPassword", ""));
+		assertEquals("New Password Must Not Be EMPTY", exception.getMessage());
 	}
 	
 	@Test
+	@Order(16)
 	void testChangePasswordUnmatchPass() {
-		fail("Not yet implemented");
+		var exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword(input.email(), input.password(), "NewPass"));
+		assertEquals("Please check OLDPASSWORD ", exception.getMessage());
 	}
 	
 	@Test
+	@Order(17)
 	void testChangePasswordSamePass() {
-		fail("Not yet implemented");
+		var exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword(input.email(), "NewPassword", "NewPassword"));
+		assertEquals("The Psswords are SAME", exception.getMessage());
 	}
 	
 
