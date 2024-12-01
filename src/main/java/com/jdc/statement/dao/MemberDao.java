@@ -1,6 +1,7 @@
 package com.jdc.statement.dao;
 
 import java.sql.Date;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import com.jdc.statement.ConnectionManager;
@@ -26,22 +27,22 @@ public class MemberDao {
 		
 		//email
 		if(StringUitls.isEmpty(member.email())) {
-			throw new MessageDaoException("Member EAMIL must not be empty");
+			throw new MessageDaoException("Member Email must not be empty");
 		}
 		
 		//name
 		if(StringUitls.isEmpty(member.name())) {
-			throw new MessageDaoException("Member NAME must not be empty");
+			throw new MessageDaoException("Member Name must not be empty");
 		}
 		
 		//password
 		if(StringUitls.isEmpty(member.password())) {
-			throw new MessageDaoException("Member PASSWORD must not be empty");
+			throw new MessageDaoException("Member Password must not be empty");
 		}
 		
 		//dob
 		if(null == member.dob()) {
-			throw new MessageDaoException("Member DATE OF BATH must not be empty");
+			throw new MessageDaoException("Member Date Of Bath must not be Null");
 		}
 		
 		try(var conn = manager.getConnection();
@@ -58,7 +59,7 @@ public class MemberDao {
 			
 			
 		} catch (SQLException e) {
-			throw new MessageDaoException("EMAIL has already been used");
+			throw new MessageDaoException("Email has been already existed");
 		}
 		
 		
@@ -72,7 +73,7 @@ public class MemberDao {
 		
 		try(var conn = manager.getConnection();
 				var stmt = conn.prepareStatement("""
-						select * from member where id = ?
+						select * from member where email = ?
 						""")){
 			stmt.setString(1, email);
 			
@@ -89,14 +90,53 @@ public class MemberDao {
 			
 			
 		} catch (SQLException e) {
-			
+			e.printStackTrace();
 		}
 		
 		return null;
 	}
 	
 	public int changePassword(String email,String oldPass, String newPass) {
-		return 0;
+		
+		//Validation
+		
+		if(StringUitls.isEmpty(email)) {
+			throw new MessageDaoException("Email Must Not Be EMPTY");
+		}
+		
+		
+		if(StringUitls.isEmpty(oldPass)) {
+			throw new MessageDaoException("Old Password Must Not Be EMPTY");
+		}
+		
+		if(StringUitls.isEmpty(newPass)) {
+			throw new MessageDaoException("New Password Must Not Be EMPTY");
+		}
+		if(oldPass.equals(newPass)) {
+			throw new MessageDaoException("The Psswords are SAME");
+		}
+		
+		try(var connection = manager.getConnection();
+				var stmt = connection.prepareStatement("""
+						select * from member where email = ?
+						""",ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE)){
+			stmt.setString(1, email);
+			var result = stmt.executeQuery();
+			
+			if(result.next()) {
+				if(!oldPass.equals(result.getString("password"))){
+					throw new MessageDaoException("Please check OLDPASSWORD");
+				}
+				result.updateString("password", newPass);
+				result.updateRow();
+				return 1;
+			}
+			
+		} catch (SQLException e) {			
+			e.printStackTrace();
+		}
+		
+		throw new MessageDaoException("Please Check Email");
 	}
 }
 	

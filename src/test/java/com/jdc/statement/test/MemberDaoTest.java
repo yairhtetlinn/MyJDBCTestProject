@@ -45,15 +45,14 @@ class MemberDaoTest {
 	}
 	
 	@Test
-	@Order(2)
+	@Order(3)
 	void testCreateMemberNull() {
-		dao.createMember(null);
 		assertThrows(IllegalArgumentException.class,
 				()->dao.createMember(null));
 	}
 	
 	@Test
-	@Order(3)
+	@Order(2)
 	void testMemberDuplicateKey() {
 		var exception = assertThrows(MessageDaoException.class,
 				()-> dao.createMember(input) );
@@ -65,7 +64,7 @@ class MemberDaoTest {
 	void testCreateMemberNullName() {
 		var NullData = new Member("testone@gmail.com", null, "Testone", LocalDate.of(2001, 9, 26), Role.Admin);
 		var exception = assertThrows(MessageDaoException.class, ()->dao.createMember(NullData));
-		assertEquals("Member Name must not be Null", exception.getMessage());
+		assertEquals("Member Name must not be empty", exception.getMessage());
 		
 		var EmptyData = new Member("testone@gmail.com", "", "Testone", LocalDate.of(2001, 9, 26), Role.Admin);
 		exception = assertThrows(MessageDaoException.class, ()->dao.createMember(EmptyData));
@@ -77,7 +76,7 @@ class MemberDaoTest {
 	void testCreateMemberNullEmail() {
 		var NullData = new Member(null, "Yair Htet Linn", "Testone", LocalDate.of(2001, 9, 26), Role.Admin);
 		var exception = assertThrows(MessageDaoException.class, ()->dao.createMember(NullData));
-		assertEquals("Member Email must not be Null", exception.getMessage());
+		assertEquals("Member Email must not be empty", exception.getMessage());
 		
 		var EmptyData = new Member("", "Yair Htet Linn", "Testone", LocalDate.of(2001, 9, 26), Role.Admin);
 		exception = assertThrows(MessageDaoException.class, ()->dao.createMember(EmptyData));
@@ -89,7 +88,7 @@ class MemberDaoTest {
 	void testCreateMemberNullDob() {
 		var NullData = new Member("testone@gmail.com", "Yair Htet Linn", "Testone", null , Role.Admin);
 		var exception = assertThrows(MessageDaoException.class, ()->dao.createMember(NullData));
-		assertEquals("Member Name must not be Null", exception.getMessage());
+		assertEquals("Member Date Of Bath must not be Null", exception.getMessage());
 	}
 	
 	@Test
@@ -97,11 +96,11 @@ class MemberDaoTest {
 	void testCreateMemberNullPassword() {
 		var NullData = new Member("testone@gmail.com", "Yari Htet Linn", null, LocalDate.of(2001, 9, 26), Role.Admin);
 		var exception = assertThrows(MessageDaoException.class, ()->dao.createMember(NullData));
-		assertEquals("Member Name must not be Null", exception.getMessage());
+		assertEquals("Member Password must not be empty", exception.getMessage());
 		
 		var EmptyData = new Member("testone@gmail.com", "Yair Hte Linn", "", LocalDate.of(2001, 9, 26), Role.Admin);
 		exception = assertThrows(MessageDaoException.class, ()->dao.createMember(EmptyData));
-		assertEquals("Member Name must not be empty", exception.getMessage());
+		assertEquals("Member Password must not be empty", exception.getMessage());
 	}
 
 	@Test
@@ -127,12 +126,12 @@ class MemberDaoTest {
 	@Test
 	@Order(11)
 	void testChangePassword() {
-		var NewPass = "NewPassword";
-		var result = dao.changePassword(input.email(), input.password(), NewPass);
+		var newPass = "newPassword";
+		var result = dao.changePassword(input.email(), input.password(), newPass);
 		assertEquals(1, result);
 		
 		var member = dao.findByEmail(input.email());
-		assertEquals(NewPass, member.password());
+		assertEquals(newPass, member.password());
 		assertEquals(input.name(), member.name());
 		assertEquals(input.dob(), member.dob());
 		assertEquals(input.role(), member.role());
@@ -141,7 +140,7 @@ class MemberDaoTest {
 	@Test
 	@Order(12)
 	void testChangePasswordNotFound() {
-		var exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword("%s".formatted(input.email()), input.password(), "NewPassword"));
+		var exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword("gg@gmail.com", input.password(), "NewPassword"));
 		assertEquals("Please Check Email", exception.getMessage());
 	}
 	
@@ -150,7 +149,7 @@ class MemberDaoTest {
 	@Order(13)
 	void testChangePasswordNullEmail() {
 		var exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword(null, "NewPassword", "NewPass"));
-		assertEquals("Email Must Not Be NULL", exception.getMessage());
+		assertEquals("Email Must Not Be EMPTY", exception.getMessage());
 		exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword("","NewPassword", "NewPass"));
 		assertEquals("Email Must Not Be EMPTY", exception.getMessage());
 	}
@@ -159,7 +158,7 @@ class MemberDaoTest {
 	@Order(14)
 	void testChangePasswordNullOldPass() {
 		var exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword(input.email(), null, "NewPassword"));
-		assertEquals("Old Password Must Not Be NULL", exception.getMessage());
+		assertEquals("Old Password Must Not Be EMPTY", exception.getMessage());
 		exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword(input.email(), "", "NewPassword"));
 		assertEquals("Old Password Must Not Be EMPTY", exception.getMessage());
 	}
@@ -168,7 +167,7 @@ class MemberDaoTest {
 	@Order(15)
 	void testChangePasswordNullNewPass() {
 		var exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword(input.email(), "NewPassword", null));
-		assertEquals("New Password Must Not Be NULL", exception.getMessage());
+		assertEquals("New Password Must Not Be EMPTY", exception.getMessage());
 		exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword(input.email(), "NewPassword", ""));
 		assertEquals("New Password Must Not Be EMPTY", exception.getMessage());
 	}
@@ -177,7 +176,7 @@ class MemberDaoTest {
 	@Order(16)
 	void testChangePasswordUnmatchPass() {
 		var exception = assertThrows(MessageDaoException.class, ()-> dao.changePassword(input.email(), input.password(), "NewPass"));
-		assertEquals("Please check OLDPASSWORD ", exception.getMessage());
+		assertEquals("Please check OLDPASSWORD", exception.getMessage());
 	}
 	
 	@Test
