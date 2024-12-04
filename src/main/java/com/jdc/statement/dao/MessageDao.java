@@ -2,143 +2,111 @@ package com.jdc.statement.dao;
 
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.List;
 import com.jdc.statement.ConnectionManager;
+import com.jdc.statement.MessageDaoException;
 import com.jdc.statement.dto.Member;
+import com.jdc.statement.dto.Member.Role;
 import com.jdc.statement.dto.Message;
+import com.jdc.statement.utils.StringUitls;
 
 public class MessageDao {
 	
 	private ConnectionManager manager;
+	private MemberDao memberDao;
 
 	public MessageDao(ConnectionManager manager) {
 		super();
 		this.manager = manager;
+		memberDao = new MemberDao(manager);
 	}
 	
-/*	public List<Message> createMessages(List<Message> messages){
-		
-		List<Message> list = new ArrayList<Message>();
-		
-		if(null == messages) {
-			return list;
-		}
-		
-		var sql = "insert into message (title,message) values (?,?)";
-		
-		try(var conn= manager.getConnection();
-				var stmt = conn.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS)) {
+	public Message create(Message message) {		
+		validate(message);
+		try(var conn = manager.getConnection();
+				var stmt = conn.prepareStatement("""
+						INSERT into member (email,title,message)
+						values (?,?,?)
+						""",Statement.RETURN_GENERATED_KEYS)){
+			stmt.setString(1, message.member().email());
+			stmt.setString(2, message.title());
+			stmt.setString(3, message.message());
 			
-			for(var m: messages) {
-				stmt.setString(1, m.title());
-				stmt.setString(2, m.message());
-				stmt.addBatch();
+			stmt.executeUpdate();
+			var result = stmt.getGeneratedKeys();
+			if(result.next()) {
+				return message.CloneWithId(result.getInt(1));
 			}
-			
-		    stmt.executeBatch();//executeBactch() က 
-											//batch လုပ်ပြီးထည့်လိုက်တဲ့ အကြောင်းအရေအတွက် စုစုပေါင်းကို int array အနေနဲ့ ပြန်ပေးတယ်
-			
-			var keys = stmt.getGeneratedKeys();
-			
-			var index = 0;
-			while(keys.next()) {
-				list.add(messages.get(index).CloneWithId(keys.getInt(1)));
-//သူက messages ကရတဲ့ တန်ဖိုးထဲကို Array ထဲထည့်မှာမလို့ အပြင်ကနေ variable တစ်လုံးကို 0 နဲ့ ယူပြီး get() method ကိုသုံးပြီး 0 ကနေ
-//စပြီး တန်ဖိုးတွေကို စီပေးလိုက်တာ 
-				index ++;
-			}
-			
 			
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
-		
-		return list;
-	}
-	
-	public Message createMessage(Message data) {
-		
-		var sql = "insert into message (title,message) values (?,?)";
-		
-		try(var conn= manager.getConnection();
-				var stmt = conn.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS)) {
-			
-			stmt.setString(1, data.title());
-			stmt.setString(2, data.message());
-			
-		 stmt.executeUpdate();
-		 
-		 var result = stmt.getGeneratedKeys();
-		 
-		 if(result.next()) {
-			 var id = result.getInt(1);
-			 return data.CloneWithId(id);
-		 }
-			
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
-		
 		return null;
 	}
 	
-	public Message findById (int id) {
-		
-		var sql = "select * from message where id = ?";
-		
+	public Message findById(int id) {
 		try(var conn = manager.getConnection();
-				var stmt = conn.prepareStatement(sql)) {
-			
+				var stmt = conn.prepareStatement("""
+						SELECT ms.id id, ms.title title,ms.message message,ms.post_at postAt,ms.email email,
+						mb.name name,mb.role role,mb.password password,mb.dob dobb
+						FROM message ms inner join member mb 
+						ON mb.email=ms.email 
+						WHERE ms.id=?
+						""")){
 			stmt.setInt(1, id);
 			
-			var resultSet = stmt.executeQuery();
+			var result = stmt.executeQuery();
 			
-			if(resultSet.next()) {
+			while(result.next()) {
 				return new Message(
-						resultSet.getInt("id"), 
-						resultSet.getString("title"),
-						resultSet.getString("message"),
-						resultSet.getTimestamp("post_at").toLocalDateTime());//Message ထဲကို object ဆောက်ဖို့ အတွက် 
-																			//LocalDateTime ပြောင်းပေး Message က LocalDateTime ဖြစ်နေလို့
-																			// သူ့ကို သုံးချင်ရင် Database ထဲက column ကို not null ပြောင်းပေးရတယ် 
-																			// မဟုတ်ရင် Null Pointer Exception တက်ပြီ
+						result.getInt("id"), 
+						result.getString("title"), 
+						result.getString("message"), 
+						result.getTimestamp("postAt").toLocalDateTime(), 
+						new Member(result.getString("email"), 
+								result.getString("name"), 
+								result.getString("passwrod"), 
+								result.getDate("dobb").toLocalDate(), 
+								Role.valueOf(result.getString("role"))));
 			}
 			
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
-		
 		return null;
 	}
 	
-	public int update(int id, String title, String message) {
-		var sql = "update message set title =?, message =? where id = ?";
-		
-		try(var conn = manager.getConnection();
-				var stmt = conn.prepareStatement(sql)) {
-			
-			stmt.setString(1, title);
-			stmt.setString(2, message);
-			stmt.setInt(3, id);
-			
-			return stmt.executeUpdate();
-			
-		} catch (SQLException e) {
-			e.printStackTrace();
+	public void validate(Message message) {
+		if(message == null) {
+			throw new IllegalArgumentException();
 		}
 		
-	return 0;
+		if(StringUitls.isEmpty(message.title())) {
+			throw new MessageDaoException("This is NO TITLE for this MESSAGE");
+		}
+		
+		if(StringUitls.isEmpty(message.message())) {
+			throw new MessageDaoException("This is NO MESSAGE LETTER ");
+		}
+		
+		if(null == message.member()) {
+			throw new MessageDaoException("This is NO MEMBER for this MESSAGE");
+		}
+		
+		if(null == memberDao.findByEmail(message.member().email())) {
+			throw new MessageDaoException("INVALID MEMBER for this MESSAGE");
+		}
+		
 	}
 	
-	public int deleteById(int id) {
-		
-		var sql = "delete from message where id=?";
+	public int save(Message message) {
+		validate(message);
 		
 		try(var conn = manager.getConnection();
-				var stmt = conn.prepareStatement(sql)) {
-			
-			stmt.setInt(1, id);
+				var stmt= conn.prepareStatement("UPDATE message SET title = ?,message = ? WHERE id = ?")){
+			stmt.setString(1, message.title());
+			stmt.setString(2, message.message());
+			stmt.setInt(3, message.id());
 			
 			return stmt.executeUpdate();
 			
@@ -148,27 +116,22 @@ public class MessageDao {
 		
 		return 0;
 	}
-*/
-	public Message create(Message message) {
+	
+	//Member တိုင်းမှာ email ရှိရမှာ ဖြစ်တဲ့အတွက် email ကို လက်ခံပြီး အလုပ်လုပ်တဲ့ Method ကိုရေးပေးလိုက်တာ
+	//Search တွေ Update တွေမှာ အခြေအနေကို ကြည့်ပြီး primary key ကို သုံး
+	public List<Message> searchByMember(String email){
 		return null;
 	}
-	
+		
 	public List<Message> search(String memberName,String Keyword){
 		return null;
 	}
-	
-	public List<Message> searchByMember(String memberName,Member member){
-		return null;
-	}
-	
 	
 	public int update(Message message) {
 		return 0;
 	}
 	
-	public Message findById(int id) {
-		return null;
-	}
+
 	
 	
 }

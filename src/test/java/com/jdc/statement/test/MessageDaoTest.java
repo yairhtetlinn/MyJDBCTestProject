@@ -1,146 +1,245 @@
 package com.jdc.statement.test;
 
-/*import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.sql.Date;
+import java.time.LocalDate;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import com.jdc.statement.ConnectionManager;
 import com.jdc.statement.DatabaseInitializer;
+import com.jdc.statement.MessageDaoException;
 import com.jdc.statement.dao.MessageDao;
+import com.jdc.statement.dto.Member;
+import com.jdc.statement.dto.Member.Role;
 import com.jdc.statement.dto.Message;
 
-*/
-
-//@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestMethodOrder(OrderAnnotation.class)
 class MessageDaoTest {
 	
-/*	MessageDao dao;
-	Message message = new Message("Yair Htet Linn", "Hi");
-
+	MessageDao dao;
+	static Message message;
 
 	@BeforeAll
 	static void setUpBeforeClass() throws Exception {
-		DatabaseInitializer.truncate("message");
-	}
-	
-	@BeforeEach
-	void setUpBefore() {
-		dao= new MessageDao(ConnectionManager.getInstance());
+		
+		//Truncate Tables
+		DatabaseInitializer.truncate("member","message");
+		
+		//Create Members
+		try(var conn = ConnectionManager.getInstance().getConnection();
+				var stmt = conn.prepareStatement("""
+						insert into member values (?,?,?,?,?)
+						""")){
+			stmt.setString(1, "Found@gmail.com");
+			stmt.setString(2, "FoundedUser");
+			stmt.setString(3, "FoundedUser");
+			stmt.setDate(4, Date.valueOf("2000-02-02"));
+			stmt.setString(5 , Role.Member.name());
+			
+			stmt.addBatch();
+			
+			stmt.setString(1, "NotFound@gmail.com");
+			stmt.setString(2, "NotFoundedUser");
+			stmt.setString(3, "NotFoundedUser");
+			stmt.setDate(4, Date.valueOf("2000-02-02"));
+			stmt.setString(5 , Role.Member.name());
+			
+			stmt.addBatch();
+			
+			stmt.executeBatch();
+			
+		}
+		message = new Message("Test Title", "Test Message", 
+					new Member("Found@gmail.com", "FoundedUser", "FoundedUser"
+							, LocalDate.of(2002, 02, 20), Role.Member));
 	}
 
-	@Test
+	@BeforeEach
+	void setUp() throws Exception {
+		dao = new MessageDao(ConnectionManager.getInstance());
+	}
+
 	@Order(1)
-	void testCreateMesssage() {
-		var result = dao.createMessage(message);
+	@Test
+	void testCreate() {
+		var result = dao.create(message);
 		assertEquals(1, result.id());
 	}
 	
-	@Test
 	@Order(2)
-	void testFindByIdFound() {
-		var result = dao.findById(1);
-		assertNotNull(result);
-		
-		assertEquals(message.title(), result.title());
-		assertEquals(message.message(), result.message());
-		assertNotNull(result.postAt());
+	@Test
+	void testCreateNull() {
+		assertThrows(IllegalArgumentException.class,
+				()->dao.create(null));
 	}
 	
-	@Test
 	@Order(3)
+	@Test
+	void testCreateNullMember() {
+		var NullMember = new Message("Title", "Member", null );
+		var exception = assertThrows(MessageDaoException.class, 
+				()->dao.create(NullMember));
+		assertEquals("This is NO MEMBER for this MESSAGE", exception.getMessage());
+	}
+	
+	@Order(4)
+	@Test
+	void testCreateInvalidMember() {
+		var InvalidMember = new Message("Title", "member", 
+				new Member("Yair Htet Linn", "Yair ", null, null, null));
+		var exception = assertThrows(MessageDaoException.class, 
+				()->dao.create(InvalidMember));
+		assertEquals("INVALID MEMBER for this MESSAGE", exception.getMessage());
+		
+	}
+	
+	@Order(5)
+	@Test
+	void testCreateNullTitle() {
+		var NullTitle = new Message(null, "member", message.member());
+		var exception = assertThrows(MessageDaoException.class, 
+				()->dao.create(NullTitle));
+		assertEquals("This is NO TITLE for this MESSAGE", exception.getMessage());
+
+		var EmptyTitle = new Message("", "member", message.member());
+		exception = assertThrows(MessageDaoException.class, 
+				()->dao.create(EmptyTitle));
+		assertEquals("This is NO TITLE for this MESSAGE", exception.getMessage());
+	}
+	
+	@Order(6)
+	@Test
+	void testCreateNullMessage() {
+		var NullMessage = new Message("Tite", null, message.member());
+		var exception = assertThrows(MessageDaoException.class, 
+				()->dao.create(NullMessage));
+		assertEquals("This is NO MESSAGE LETTER ", exception.getMessage());
+
+		var EmptyMessage = new Message("", "member", message.member());
+		exception = assertThrows(MessageDaoException.class, 
+				()->dao.create(EmptyMessage));
+		assertEquals("This is NO MESSAGE LETTER ", exception.getMessage());
+	}
+	
+	@Order(7)
+	@Test
+	void testFindById() {
+		var result = dao.findById(1);
+		assertNotNull(result);
+		assertEquals(message.CloneWithId(1), result);
+	}
+	
+	@Order(8)
+	@Test
 	void testFindByIdNotFound() {
 		var result = dao.findById(2);
 		assertNull(result);
 	}
 	
-	@Test
-	@Order(4)
-	void testUpdate() {
-		
-		var title = "New Yair Htet Linn";
-		var message = "New Hi";
-			
-		var count = dao.update(1,title,message);
-		assertEquals(1, count); // ငါလုပ်တဲ့ Test သာမှန်ရင် Database ထဲမှာ နံပါတ် 1 နဲ့ စတဲ့ Database အကြောင်းက တစ်ကြောင်းသွားရှိလိမ့်မယ်
-								// အဲ့လိုလုပ်လို့ ဝင်သွားတဲ့ 1 နဲ့ Database အကြောင်းက Database ထဲမှာ တစ်ကြောင်းပဲရှိရမှာ ဖြစ်လို့ သူ့ကို 1 နဲ့ ညီတာ
-								// assertEqual ရဲ့ 1 က ငါတို့ထည့်လိုက်တဲ့ Database အကြောင်းအရေအတွက်ကို ေဖာ်ပြတာ
-		
-		var result = dao.findById(1);
-			
-		assertEquals(title, result.title());
-		assertEquals(message, result.message());
-		assertNotNull(result.postAt());
-	}
-	
-	@Test
-	@Order(5)
-	void testUpdateNotFound() {
-		
-		var title = "New Yair Htet Linn";
-		var message = "New Hi";
-		
-		var count = dao.update(2,title,message);
-		assertEquals(0, count);// Database ထဲမှာ နံပါတ် 2 နဲ့ ဝင်နေတဲ့ အကြောင်းအရေအတွက် က တစ်ခုမှမရှိရမှာမလို့ သူက 0 နဲ့ ညီရတာ
-		
-		
-	}
-	
-	@Test
-	@Order(6)
-	void deleteFound() {
-		int count = dao.deleteById(1);
-		assertEquals(1, count);
-	}
-	
-	@Test
-	@Order(7)
-	void deleteNotFound() {
-		int count = dao.deleteById(1);
-		assertEquals(0, count);
-	}
-	
-	@Test
-	@Order(8)
-	void testCreateMessage() {
-		var messages = List.of(
-				new Message("Title 1", "message 1"),
-				new Message("Title 2", "message 2"),
-				new Message("Title 3","message 3")
-				);
-		
-		var list = dao.createMessages(messages);
-		
-		assertEquals(2, list.get(0).id());
-		assertEquals(3, list.get(1).id());
-		assertEquals(4, list.get(2).id());
-	}
-	
-	@Test
 	@Order(9)
-	void testCreateMessageEmpty() {
-		var messages = new ArrayList<Message>(); //  ArrayList ကို ဒီလိုရေးထားရင် အခွံကြီး သူထဲမှာ ဘာ Data မှ
-		//မရှိဘူး ။ သူ့ထဲကို Data ထည့်ပေးချင်ရင် အောက်မှာ Method တွေဆက်ရေးပေးဖို့လိုမယ်။ တို့က ဒီတစ်ခါ List ထဲမှာ ဘာမှမပါရင် 
-		//ဘာဖြစ်မလဲ သိချင်လို့ အလွတ်ကြီးထည့်ပေးလိုက်တာ
+	@Test
+	void testSaveOk() {
+		var target = dao.findById(1);
+		//Variable ကို Database ထဲက Data ကို findById နဲ့ ရှာပြီးထည့်ပေးတယ်
+		//ပြီးမှ အဲ့တန်ဖိုးကို အောက်မှ ReAssign ပြန်လုပ်တယ်
+		target = target.CloneWithTitle("New Title").CloneWithMessage("New Message");
+		var result = dao.save(target);
+		assertEquals(1, result);
+		assertEquals(target, dao.findById(1));
+	}
+	
+	@Order(10)
+	@Test
+	void testSaveNull() {
+		assertThrows(IllegalArgumentException.class, ()->dao.save(null));
+	}
+	
+	@Order(11)
+	@Test
+	void testSaveNullTitle() {
+		var Nulltarget = dao.findById(1).CloneWithTitle(null).CloneWithMessage("New Message");
+		var exception = assertThrows(MessageDaoException.class, ()->dao.save(Nulltarget));
+		//Lambda တို့ကိုထည့်မယ့် Variable က Final ဖြစ်ရမှာမလို့ target ကို findbyId တန်းရှာပေးလိုက်တာ
+		//အပေါ်ကလို reassign ပြန်မလုပ်ပေးတော့ဘူး
+		assertEquals("This is NO TITLE for this MESSAGE", exception.getMessage());
 		
-		var list = dao.createMessages(messages);
-		
-		assertTrue(list.isEmpty());
+		var Emptytarget = dao.findById(1).CloneWithTitle("").CloneWithMessage("New Message");
+	    exception = assertThrows(MessageDaoException.class, ()->dao.save(Emptytarget));
+	    assertEquals("This is NO TITLE for this MESSAGE", exception.getMessage());
+	}
+	
+	@Order(12)
+	@Test
+	void testSaveNullMessage() {
+		var NullMessage = dao.findById(1).CloneWithTitle("New Title").CloneWithMessage(null);
+	    var exception = assertThrows(MessageDaoException.class, ()->dao.save(NullMessage));
+	    assertEquals("This is NO MESSAGE LETTER ", exception.getMessage());
+	    
+	    var EmptyMessage = dao.findById(1).CloneWithTitle("New Title").CloneWithMessage("");
+	    exception = assertThrows(MessageDaoException.class, ()->dao.save(EmptyMessage));
+	    assertEquals("This is NO MESSAGE LETTER ", exception.getMessage());
+	}
+
+	@Test
+	@Order(13)
+	void testSearchByMember() {
+		var search = dao.searchByMember(message.member().email());
+		assertEquals(1, search);
+	}
+
+	@Test
+	@Order(14)
+	void testSearchByMemberNull() {
+		assertThrows(IllegalArgumentException.class, 
+				()->dao.searchByMember(null));
 	}
 	
 	@Test
-	@Order(10)
-	void testCreateMessageNull() {
-		var list = dao.createMessages(null);
-		
-		assertTrue(list.isEmpty());
+	@Order(15)
+	void testSearchByMemberNotFound() {
+		var search = dao.searchByMember(message.member().email().concat(""));
+		assertEquals(0, search);
 	}
-*/
+	
+	@Test
+	@Order(16)
+	void testSearch() {
+		var result = dao.search("found", "message");
+		assertEquals(1, result);
+	}
+	
+	@Test
+	@Order(17)
+	void testSearchWithNoArgument() {
+		var result = dao.search(null, null);
+		assertEquals(1, result);
+	}
+	
+	@Test
+	@Order(18)
+	void testSearchWithNoMember() {
+		var result = dao.search("found", "");
+		assertEquals(1, result);
+	}
+	
+	@Test
+	@Order(19)
+	void testSearchNoKeyword() {
+		var result = dao.search("", "message");
+		assertEquals(1, result);
+	}
+	
+	@Test
+	@Order(20)
+	void testSearchNotFound() {
+		var result = dao.search("end", "");
+		assertEquals(0, result);
+	}
 }
